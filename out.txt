@@ -1,0 +1,33 @@
+starting program.
+RAM built.
+L2 built.
+L1 built
+reading block 41f7a0
+cache miss
+cache miss
+RAM hit
+reading block 13f5e2c0
+cache miss
+cache miss
+RAM hit
+reading block 5e78900
+cache miss
+cache miss
+RAM hit
+reading block 4758a0
+cache miss
+cache miss
+RAM hit
+reading block 41f7a0
+cache miss
+cache miss
+RAM hit
+reading block 41f7a0
+cache miss
+cache miss
+RAM hit
+reading block 41f7a0
+cache miss
+cache miss
+RAM hit
+Total time: 1344.000000
