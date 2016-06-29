@@ -82,33 +82,34 @@ Block Memory::getBlock(long long page_address, bool& success, double& time) {
 }
 
 Block Memory::writePage(long long page_address, bool& success, double& time) {
-	// update time
-	time += word_access_time;
 	// get block address from page address
 	long long block_address = getBlockAddress(page_address);
 	// check if the block exists in this memory 
 	int block_index = getBlockFromCurrentMemory(block_address, success, time);
 	Block block = blocks[block_index];
 	// make block dirty
-	blocks[block_index].dirty = true;
+	if (lower_level_memory)
+		blocks[block_index].dirty = true;
 	//printf ("***marked dirty: %d\n", block_index);
 	if (success) {
 		printf("cache hit\n"); fflush(stdin);
-		//cache hit, update the page	
+		//cache hit	
 		// if memory is write trough, we need to write it in lower level memory
 		if (write_hit_policy == WRITE_TROUGH && lower_level_memory)
 			lower_level_memory->writePage(page_address, success, time);
+		else 
+			time += word_access_time + tag_compare_time;
 		// return the block
 		return block;
 	}
 	// cache miss
 	printf("cache miss\n"); fflush(stdin);
 	if (lower_level_memory) {
+		// get block from lower level memory
 		Block block2 = lower_level_memory->writePage(page_address, success, time);
 		// if write miss policy is write allocate, store block in current memory
 		// also deals with the case of a block leaving current memory;
 		if (write_miss_policy == WRITE_ALLOCATE) {
-			// get block from lower level memory
 			// substitute
 			substitute(block2, success, time);
 		}
