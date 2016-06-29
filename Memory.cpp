@@ -37,7 +37,10 @@ Memory::Memory (
 	blocks = vector<Block>(size/block_size);
 	// initializing blocks
 	for (int i = 0; i < size/block_size; i++) {
-		blocks[i] = Block(getBlockAddress(block_size*i));
+		if (!lower_level_memory)
+			blocks[i] = Block(getBlockAddress(block_size*i));
+		else 
+			blocks[i] = -1;
 	}
 	// initializing indexes for substituition
 	for (int i = 0; i < (size/block_size)/associativity_set_size; i++)
@@ -48,18 +51,20 @@ Block Memory::getBlock(long long page_address, bool& success, double& time) {
 	//printf("getting block address\n");
 	// get block address from page address
 	long long block_address = getBlockAddress(page_address);
-	//printf ("getting block\n"); fflush (stdin);
+	//printf ("getting block %lld\n", block_address); fflush (stdin);
 	// check if the block exists in this memory 
-	Block block = getBlockFromCurrentMemory(block_address, success, time);
+	int block_index = getBlockFromCurrentMemory(block_address, success, time);
+	Block block = blocks[block_index];
 	//printf ("got block \n"); fflush (stdin);
 	if (success) {
-		// printf("cache hit\n"); fflush(stdin);
+		printf("cache hit\n"); fflush(stdin);
 		// cache hit, just update variables and return block
+		time += word_access_time + tag_compare_time;
 		return block;
 	}
 	// if memory is a cache memory (not the lowest level)
 	if (lower_level_memory) {
-		//printf("cache miss\n"); fflush(stdin);
+		printf("cache miss\n"); fflush(stdin);
 		// cache miss, we need to update the memory
 		// get block from lower level memory
 		Block block = lower_level_memory->getBlock(page_address, success, time);
@@ -70,20 +75,26 @@ Block Memory::getBlock(long long page_address, bool& success, double& time) {
 		return block;
 	}
 	// lowest level memory
-	// printf ("RAM hit\n"); fflush(stdin);
+	 printf ("RAM hit\n"); fflush(stdin);
+	time += word_access_time;
 	return Block(block_address);
 
 }
 
 Block Memory::writePage(long long page_address, bool& success, double& time) {
+	// update time
+	time += word_access_time;
 	// get block address from page address
 	long long block_address = getBlockAddress(page_address);
 	// check if the block exists in this memory 
-	Block block = getBlockFromCurrentMemory(block_address, success, time);
+	int block_index = getBlockFromCurrentMemory(block_address, success, time);
+	Block block = blocks[block_index];
+	// make block dirty
+	blocks[block_index].dirty = true;
+	//printf ("***marked dirty: %d\n", block_index);
 	if (success) {
-		//printf("cache hit\n"); fflush(stdin);
-		// cache hit, just update the page and mark it as dirty
-		block.dirty = true;
+		printf("cache hit\n"); fflush(stdin);
+		//cache hit, update the page	
 		// if memory is write trough, we need to write it in lower level memory
 		if (write_hit_policy == WRITE_TROUGH && lower_level_memory)
 			lower_level_memory->writePage(page_address, success, time);
@@ -91,7 +102,7 @@ Block Memory::writePage(long long page_address, bool& success, double& time) {
 		return block;
 	}
 	// cache miss
-	//printf("cache miss\n"); fflush(stdin);
+	printf("cache miss\n"); fflush(stdin);
 	if (lower_level_memory) {
 		Block block2 = lower_level_memory->writePage(page_address, success, time);
 		// if write miss policy is write allocate, store block in current memory
@@ -104,7 +115,7 @@ Block Memory::writePage(long long page_address, bool& success, double& time) {
 		// return the block
 		return block2;
 	}
-	//printf ("RAM hit\n"); fflush(stdin);
+	printf ("RAM hit\n"); fflush(stdin);
 	return Block(block_address);
 }
 
@@ -144,33 +155,31 @@ void Memory::substitute (Block block, bool& success, double& time) {
 
 }
 
-// gets block (if it exists) on current memory
-Block Memory::getBlockFromCurrentMemory(long long block_address, bool& success, double& time) {
+// gets index of block (if it exists) on current memory
+int Memory::getBlockFromCurrentMemory(long long block_address, bool& success, double& time) {
 	// number of sets on current memory
 	long long n_sets = (size/block_size)/associativity_set_size;
+	//printf("--nsets: %lld\n", n_sets);
 	// get in which set this blocks belong to
 	long long set_address =  (block_address*block_size)/(main_memory_size/n_sets);
 	// beginning of associativity set
 	long long start = set_address*associativity_set_size;
 	// end of associativity set
-	long long end = start + block_size;
-	//printf("\nchecking from %lld to %lld\n", start, end);
+	long long end = start + associativity_set_size;
+	//printf("--checking from %lld to %lld\n", start, end);
 	// we need to check for every possible position 
 	for (long long i = start; i < end; i++) {
-		// update time
-		time += tag_compare_time;
 		if (blocks[i].address == block_address) {
 			// success, just return the block
 			//printf ("found\n\n");
 			success = true;
-			return blocks[i];
+			return i;
 		}
 	}
 	//printf ("not found\n\n");
 	// block not in current memory. Return dummy block
 	success = false;
-	Block block(block_size);
-	return block;
+	return -1;
 }
 
 // gets the address of the block that colong longains a page passed as parameter

@@ -29,8 +29,7 @@ public:
 
 class Memory {
 private:
-	// memory blocks
-    vector<Block> blocks;
+	
     // last operation status and time
     bool last_op_status;
     long long last_op_time;
@@ -38,10 +37,14 @@ private:
     vector<long long> current_set_index;
 
     void substitute (Block block, bool& success, double& time);
-    Block getBlockFromCurrentMemory(long long block_address, bool& success, double& time);
+    int getBlockFromCurrentMemory(long long block_address, bool& success, double& time);
     long long getBlockAddress(long long page_address);
     long long getSamplePage(long long block_address);
 public:
+
+    // memory blocks
+    vector<Block> blocks;
+
     // memory size in bytes
     long long size;
     // block size in bytes
