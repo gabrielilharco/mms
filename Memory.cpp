@@ -16,7 +16,6 @@ Block::Block() : address(-1) {
 Memory::Memory (
   long long size, 
   long long block_size, 
-  long long main_memory_size, 
   int associativity_set_size,
   Memory * lower_level_memory,
   double word_access_time,
@@ -26,7 +25,6 @@ Memory::Memory (
 ) :
   size(size),
   block_size(block_size),
-  main_memory_size(main_memory_size),
   associativity_set_size(associativity_set_size),
   lower_level_memory(lower_level_memory),
   word_access_time(word_access_time),
@@ -52,20 +50,12 @@ Memory::Memory (
   // there are <size> bytes in the entire cache, so there are
   // <size>/(<associativity_set_size>*<block_size>) sets
   n_sets = size/(associativity_set_size*block_size);
-  //printf ("n_sets: %lld\n", n_sets);
   add_set_size = log2(n_sets);
   // finally, the tag is what remains
   add_tag_size = ADDRESS_SIZE-add_set_size-add_offset_size;
-  //printf ("tag: %d, set: %d, offset: %d\n", add_tag_size, add_set_size, add_offset_size);
   // initializing indexes for substituition
   for (int i = 0; i < n_sets; i++)
     current_set_index.push_back(0);
-
-  // printf ("-----------\n");
-  // for (int i = 0; i < 8; i++) {
-  //   long long tag = getTag(i) << (add_offset_size+add_set_size);
-  //   printf ("%d - tag: %lld, set: %lld\n", i, tag, getSet(i));
-  // }
 }
 
 Block Memory::getBlock(long long address, bool& success, double& time) {
@@ -77,14 +67,12 @@ Block Memory::getBlock(long long address, bool& success, double& time) {
     // check if the block exists in this memory 
     int block_index = getBlockFromCurrentMemory(address, success, time);
     if (success) {
-      //printf ("hit\n");
       // cache hit, just update variables and return block
       time += word_access_time + tag_compare_time;
       return blocks[block_index];
     }
     // cache miss, update misses statistic
     misses++;
-    //printf ("miss\n");
     // cache miss, we need to update the memory
     // get block from lower level memory
     Block block = lower_level_memory->getBlock(address, success, time);
@@ -96,7 +84,6 @@ Block Memory::getBlock(long long address, bool& success, double& time) {
   }
   // lowest level memory
   time += word_access_time;
-  //printf ("ram hit\n");
   return Block(address);
 
 }
@@ -112,7 +99,6 @@ Block Memory::writePage(long long address, bool& success, double& time) {
       Block block = blocks[block_index];
       // make block dirty
       blocks[block_index].dirty = true;
-      //printf ("hit\n");
       // if memory is write trough, we need to write it in lower level memory
       if (write_hit_policy == WRITE_TROUGH && lower_level_memory)
         lower_level_memory->writePage(address, success, time);
@@ -121,7 +107,6 @@ Block Memory::writePage(long long address, bool& success, double& time) {
       // return the block
       return block;
     }
-    //printf ("miss\n");
     // cache miss
     misses++;
     // get block from lower level memory
@@ -137,7 +122,6 @@ Block Memory::writePage(long long address, bool& success, double& time) {
   }
   // lowest level memory
   time += word_access_time;
-  //printf ("RAM hit\n"); fflush(stdin);
   return Block(address);
 }
 
@@ -169,12 +153,10 @@ void Memory::substitute (Block block, bool& success, double& time, bool dirty) {
 
 // gets index of block (if it exists) on current memory
 int Memory::getBlockFromCurrentMemory(long long address, bool& success, double& time) {
-  //printf ("getblock\n"); fflush(stdin);
   // beginning of associativity set
   // the start address of the set is getSet(address) * set_size
   // to get the starting block index, we divide it by the block_size
   long long start = (getSet(address)*(size/n_sets))/block_size;
-  //printf ("start: %llx, %llx\n", address, getSet(address)); fflush(stdin);
   // end of associativity set (there are <associativity_set_size> blocks in a set)
   long long end = start + associativity_set_size;
   // we need to check for every possible position 

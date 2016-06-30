@@ -76,7 +76,6 @@ public:
   Memory(
     long long size, 
     long long block_size, 
-    long long main_memory_size, 
     int associativity_set_size,
     Memory * lower_level_memory,
     double word_access_time,
